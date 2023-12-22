@@ -28,56 +28,98 @@ use anyhow::Result;
 
 static INPUT: &'static str = include_str!("./input");
 
-fn first_number(chars: &std::str::Chars) -> Result<u32> {
-    let mut chars2 = chars.clone();
-    for c in chars2.by_ref() {
+const DIGITS_AS_WORDS: &[&str] = &[
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+];
+
+fn find_first_digit(chars: &std::str::Chars) -> Result<u32> {
+    let mut m_chars = chars.clone();
+    for c in m_chars.by_ref() {
         if c.is_ascii_digit() {
             let number = Some(
                 c.to_digit(10)
                     .ok_or_else(|| anyhow::anyhow!("Invalid digit: {}", c))?,
             );
             return number
-                .ok_or_else(|| anyhow::anyhow!("No number found: {}", c));
+                .ok_or_else(|| anyhow::anyhow!("No digit found: {}", c));
         }
     }
 
-    anyhow::bail!("No first number found: {}", chars.as_str())
+    anyhow::bail!("Unable to find first digit: {}", chars.as_str())
 }
 
-fn last_number(chars: &std::str::Chars) -> Result<u32> {
-    let mut chars2 = chars.clone();
-    while let Some(c) = chars2.next_back() {
+fn find_last_digit(chars: &std::str::Chars) -> Result<u32> {
+    let mut m_chars = chars.clone();
+    while let Some(c) = m_chars.next_back() {
         if c.is_ascii_digit() {
             let number = Some(
                 c.to_digit(10)
                     .ok_or_else(|| anyhow::anyhow!("Invalid digit: {}", c))?,
             );
             return number
-                .ok_or_else(|| anyhow::anyhow!("No number found: {}", c));
+                .ok_or_else(|| anyhow::anyhow!("No digit found: {}", c));
         }
     }
 
-    anyhow::bail!("No last number found: {}", chars.as_str())
+    anyhow::bail!("Unable to find last digit: {}", chars.as_str())
+}
+
+fn resolve_digits(chars: &std::str::Chars) -> Result<String> {
+    let mut resolved = String::new();
+
+    let mut m_chars = chars.clone();
+    for (index, c) in m_chars.by_ref().enumerate() {
+        if c.is_ascii_digit() {
+            resolved.push(c);
+        } else {
+            let word = DIGITS_AS_WORDS.iter().position(|&w| w.starts_with(c));
+
+            if word.is_some() {
+                let line = chars.as_str();
+                let line = &line[index..];
+                if let Some(word) =
+                    DIGITS_AS_WORDS.iter().find(|&w| line.starts_with(w))
+                {
+                    resolved.push_str(match *word {
+                        "zero" => "0",
+                        "one" => "1",
+                        "two" => "2",
+                        "three" => "3",
+                        "four" => "4",
+                        "five" => "5",
+                        "six" => "6",
+                        "seven" => "7",
+                        "eight" => "8",
+                        "nine" => "9",
+                        _ => anyhow::bail!("Unable to resolve '{}'", word),
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(resolved)
 }
 
 fn solve() -> Result<u32> {
-    let mut nums = Vec::new();
+    let mut calibration_values = Vec::new();
 
     for line in INPUT.lines() {
         if line.is_empty() {
             continue;
         }
 
-        let chars = line.chars();
-        let first = first_number(&chars)?;
-        let last = last_number(&chars)?;
-        nums.push(format!("{}{}", first, last).parse::<u32>()?);
+        let resolved_line = resolve_digits(&line.chars())?;
+        let chars = resolved_line.chars();
+        let first = find_first_digit(&chars)?;
+        let last = find_last_digit(&chars)?;
+        calibration_values.push(format!("{}{}", first, last).parse::<u32>()?);
     }
 
-    Ok(nums.iter().sum())
+    Ok(calibration_values.iter().sum())
 }
 
 fn main() {
     let sum = solve().unwrap();
-    println!("{}", sum);
+    println!("Calibration value: {}", sum);
 }
